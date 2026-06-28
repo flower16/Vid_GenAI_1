@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from ...domain.constants import ORC
 from ...domain.models import EvalResult
 from ...files import generators as gen
 from ...reports.summary import build_summary
@@ -61,6 +62,34 @@ def evals_agent(state: DeterminationState) -> dict:
     results.append(EvalResult(name="summary_report_reconciliation",
                               status="PASS" if recon.get("reconciles") else "WARNING",
                               detail=str(recon)))
+
+    # 5. Every input account is accounted for (covered or routed to pending)
+    input_accts = {a.account_number for a in state.get("accounts", [])}
+    covered = {n for r in state.get("coverage_results", []) for n in r.accounts_included}
+    pending_accts = {d.account_number for d in state.get("pending_decisions", [])
+                     if d.account_number}
+    unaccounted = input_accts - covered - pending_accts
+    results.append(EvalResult(name="accounts_fully_accounted",
+                              status="PASS" if not unaccounted else "FAIL",
+                              detail=("all accounts covered or pending"
+                                      if not unaccounted
+                                      else f"{len(unaccounted)} unaccounted: {sorted(unaccounted)}")))
+
+    # 6. SSN/TIN validity (mirrors the LangSmith ssn_validation evaluator)
+    ssn_codes = {f.code for f in state.get("customer_findings", [])}
+    ssn_issue = "SSN_INVALID" in ssn_codes or "SSN_MISSING" in ssn_codes
+    results.append(EvalResult(name="ssn_validation",
+                              status="WARNING" if ssn_issue else "PASS",
+                              detail="SSN/TIN issue flagged" if ssn_issue else "SSN/TIN valid"))
+
+    # 7. BUS eligibility treatment assigned (mirrors the bus_treatment evaluator)
+    bus_results = [r for r in state.get("coverage_results", []) if r.orc == ORC.BUS]
+    valid_treatments = {"per_entity_independent", "pass_through_members"}
+    bus_ok = all(r.evidence.get("treatment") in valid_treatments for r in bus_results)
+    results.append(EvalResult(name="bus_treatment",
+                              status="PASS" if bus_ok else "WARNING",
+                              detail=("no BUS accounts" if not bus_results
+                                      else f"treatments: {[r.evidence.get('treatment') for r in bus_results]}")))
 
     return {"eval_results": [r.model_dump() for r in results],
             "trace": [{"agent": "evals", "checks": len(results)}]}

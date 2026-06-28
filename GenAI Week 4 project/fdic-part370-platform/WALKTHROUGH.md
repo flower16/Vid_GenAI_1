@@ -205,23 +205,23 @@ Two distinct eval surfaces (don't confuse them):
   in `langsmith_evals.py`, append it to `OUTPUT_EVALS`, and (if it reads a label)
   add that label to the dataset rows + the `upload()` metadata.
 
-**2. Per-determination in-workflow evals** — agent #9 runs 4 self-checks on
+**2. Per-determination in-workflow evals** — agent #9 runs 7 self-checks on
 *every* determination (`input_completeness`, `deposit_balance_reconciliation`,
-`coverage_limit_respected`, `summary_report_reconciliation`). These persist to
-the Snowflake `LANGSMITH_EVAL_RESULTS` table.
+`coverage_limit_respected`, `summary_report_reconciliation`,
+`accounts_fully_accounted`, `ssn_validation`, `bus_treatment`). These persist to
+the Snowflake `LANGSMITH_EVAL_RESULTS` table and sync to LangSmith.
 
-**Bridging Snowflake → LangSmith.** The two surfaces are linked by
-`scripts/sync_evals_to_langsmith.py`: it reads the Snowflake eval rows, logs each
-determination as a **LangSmith run with one feedback score per eval**
-(PASS=1, WARNING=0.5, FAIL=0), and writes the resulting **`LANGSMITH_RUN_ID`**
-back into the Snowflake row so each row links to its LangSmith run.
+**Bridging Snowflake → LangSmith (automatic).** On every determination,
+`persist_determination` logs the evals to LangSmith as a **run with one feedback
+score per eval** (PASS=1, WARNING=0.5, FAIL=0) and stores the **`LANGSMITH_RUN_ID`**
+directly in the Snowflake rows — so evals show in **both** places with no manual
+step. Runs land in the LangSmith project `fdic-part370` (filter by run name
+`determination-…`). The sync script is now only a **backfill** for rows whose
+`LANGSMITH_RUN_ID` is NULL (e.g. persisted while LangSmith was down):
 ```bash
-python scripts/sync_evals_to_langsmith.py --dry-run   # preview
-python scripts/sync_evals_to_langsmith.py             # sync unlinked rows
+python scripts/sync_evals_to_langsmith.py             # backfill unlinked rows
 python scripts/sync_evals_to_langsmith.py --all       # re-sync everything
 ```
-After syncing, the runs appear in the LangSmith project `fdic-part370` (filter by
-run name `determination-…`), and in Snowflake `LANGSMITH_RUN_ID` is populated.
 
 ### Snowflake (persistence + audit)
 - Database/schema: **`FDIC_PART370.CORE`**, 7 tables.

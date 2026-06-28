@@ -37,10 +37,16 @@ Each evaluator is a pure function `fn(output, example) -> {key, score (0|1), com
 > factory), (3) if it reads a new label, add that label to the dataset rows and
 > to the `upload()` metadata list in `seed_langsmith_dataset.py`.
 
-### System evals (reconciliation)
-The in-workflow Evals Agent additionally checks **deposit-balance reconciliation**
-and **summary-report reconciliation** (Table 1 insured + uninsured + pending ==
-total deposits), mirroring the Compliance Review Manual checks (Guide §2.4).
+### System evals (reconciliation + completeness)
+The in-workflow Evals Agent runs **7 self-checks** on every determination:
+`input_completeness`, `deposit_balance_reconciliation`, `coverage_limit_respected`,
+`summary_report_reconciliation` (Table 1 insured + uninsured + pending == total
+deposits), `accounts_fully_accounted` (every input account ends up either covered
+or routed to the Pending File — catches silently-dropped accounts),
+`ssn_validation` (SSN/TIN issues flagged), and `bus_treatment` (any BUS coverage
+used a valid §330.11 treatment). These persist to Snowflake
+`LANGSMITH_EVAL_RESULTS` and are mirrored to LangSmith by
+`sync_evals_to_langsmith.py`.
 
 ## How LangSmith is wired
 
@@ -76,7 +82,15 @@ populated by the **in-workflow Evals Agent** every time a determination is
 persisted ([db/persistence.py](../backend/app/db/persistence.py)). So the table
 fills up from real determinations, not from the offline experiment.
 
-To make those per-determination evals visible **in LangSmith**, run the sync:
+**Auto-sync (default).** On every determination, `persist_determination` calls
+`_log_evals_to_langsmith` *before* writing to Snowflake: it creates the LangSmith
+run + feedback and stores the resulting `LANGSMITH_RUN_ID` directly in the
+Snowflake rows. So evals appear in **both** places automatically — no manual step.
+(It never raises; if LangSmith is unreachable the Snowflake rows are still written
+with a NULL run id, to be backfilled later.)
+
+**Manual backfill.** The script below re-links any rows that have a NULL
+`LANGSMITH_RUN_ID` (e.g. determinations persisted while LangSmith was down):
 
 ```bash
 cd backend

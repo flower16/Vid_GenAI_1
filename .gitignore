@@ -18,5 +18,10 @@ dist/
 audit_log.jsonl
 **/audit_log.jsonl
 
+# Office / Word temp & lock files
+~$*
+*.tmp
+
 # OS
 .DS_Store
+Thumbs.db

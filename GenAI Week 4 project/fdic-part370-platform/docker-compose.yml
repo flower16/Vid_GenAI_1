@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/docker/backend.Dockerfile
+    environment:
+      ENVIRONMENT: local
+      LLM_MODEL: claude-opus-4-8
+    env_file: [.env]
+    ports: ["8000:8000"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/docker/frontend.Dockerfile
+    depends_on: [backend]
+    ports: ["8080:80"]
+
+  mcp:
+    build:
+      context: .
+      dockerfile: deploy/docker/backend.Dockerfile
+    command: ["python", "-m", "app.mcp.server"]
+    env_file: [.env]
+    stdin_open: true
+    tty: true

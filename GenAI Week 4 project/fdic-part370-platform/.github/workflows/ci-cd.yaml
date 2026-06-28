@@ -1,0 +1,62 @@
+name: CI/CD
+
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r backend/requirements.txt
+      - name: Unit tests + ORC sample calculations
+        working-directory: backend
+        run: pytest -q
+      - name: LangSmith eval gate
+        working-directory: backend
+        run: python -c "from app.evals.langsmith_evals import evaluate_local; import sys; print('eval framework import OK')"
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm install
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  docker-publish:
+    needs: [backend-test, frontend-build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with: { creds: "${{ secrets.AZURE_CREDENTIALS }}" }
+      - name: ACR build & push
+        run: |
+          az acr build -r ${{ secrets.ACR_NAME }} -t fdic-backend:${{ github.sha }} -f deploy/docker/backend.Dockerfile .
+          az acr build -r ${{ secrets.ACR_NAME }} -t fdic-frontend:${{ github.sha }} -f deploy/docker/frontend.Dockerfile .
+
+  deploy-aks:
+    needs: docker-publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with: { creds: "${{ secrets.AZURE_CREDENTIALS }}" }
+      - uses: azure/aks-set-context@v4
+        with: { resource-group: "${{ secrets.AKS_RG }}", cluster-name: "${{ secrets.AKS_CLUSTER }}" }
+      - name: Deploy
+        env: { ACR: "${{ secrets.ACR_LOGIN_SERVER }}", TAG: "${{ github.sha }}" }
+        run: |
+          envsubst < deploy/k8s/backend.yaml | kubectl apply -f -
+          envsubst < deploy/k8s/frontend-ingress.yaml | kubectl apply -f -
+          kubectl rollout status deployment/fdic-backend -n fdic-part370

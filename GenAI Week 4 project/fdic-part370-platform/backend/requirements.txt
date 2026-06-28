@@ -1,0 +1,37 @@
+# --- Core API ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# --- AI layer ---
+langgraph==0.2.60
+langchain==0.3.14
+langchain-core==0.3.29
+langchain-openai==0.2.14
+langchain-pinecone==0.2.0
+langsmith==0.2.10
+
+# --- Vector store ---
+pinecone==9.1.0  # was pinecone-client==5.0.1 (deprecated name; both shared the 'pinecone' import path)
+
+# --- Data layer ---
+snowflake-sqlalchemy==1.6.1
+snowflake-snowpark-python==1.27.0  # 1.25.0 requires Python <3.12; bumped for 3.12 support
+sqlalchemy==2.0.36
+
+# --- Integration ---
+mcp==1.2.0
+
+# --- Auth ---
+pyjwt[crypto]==2.10.1
+
+# --- Observability ---
+opentelemetry-api==1.29.0
+opentelemetry-sdk==1.29.0
+opentelemetry-instrumentation-fastapi==0.50b0
+opentelemetry-exporter-otlp==1.29.0
+
+# --- Test ---
+pytest==8.3.4
+httpx==0.28.1

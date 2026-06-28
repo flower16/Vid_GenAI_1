@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fdic-backend
+  namespace: fdic-part370
+  labels: { app: fdic-backend }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: fdic-backend }
+  template:
+    metadata:
+      labels: { app: fdic-backend }
+    spec:
+      containers:
+        - name: backend
+          image: ${ACR}/fdic-backend:${TAG}
+          ports: [{ containerPort: 8000 }]
+          envFrom:
+            - secretRef: { name: fdic-secrets }
+            - configMapRef: { name: fdic-config }
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fdic-backend
+  namespace: fdic-part370
+spec:
+  selector: { app: fdic-backend }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fdic-backend-hpa
+  namespace: fdic-part370
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: fdic-backend }
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fdic-frontend
+  namespace: fdic-part370
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: fdic-frontend } }
+  template:
+    metadata: { labels: { app: fdic-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: ${ACR}/fdic-frontend:${TAG}
+          ports: [{ containerPort: 80 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fdic-frontend
+  namespace: fdic-part370
+spec:
+  selector: { app: fdic-frontend }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fdic-ingress
+  namespace: fdic-part370
+  annotations:
+    kubernetes.io/ingress.class: azure/application-gateway
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+    - hosts: [fdic-part370.example.com]
+      secretName: fdic-tls
+  rules:
+    - host: fdic-part370.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: fdic-backend, port: { number: 8000 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: fdic-frontend, port: { number: 80 } } }

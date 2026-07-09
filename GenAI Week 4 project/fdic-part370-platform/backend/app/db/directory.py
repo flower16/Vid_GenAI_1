@@ -160,7 +160,8 @@ def _match(text: str, q: str) -> bool:
 def _local_search_customers(q: str, limit: int) -> list[dict]:
     out = []
     for c in SAMPLE_CUSTOMERS:
-        hay = f"{c['customer_id']} {c['first_name']} {c['last_name']} {c['customer_type']}"
+        hay = (f"{c['customer_id']} {c['first_name']} {c['last_name']} "
+               f"{c['customer_type']} {c.get('ssn_tin', '')}")
         if not q or _match(hay, q):
             n = sum(1 for a in SAMPLE_ACCOUNTS if a["customer_id"] == c["customer_id"])
             out.append({"customer_id": c["customer_id"], "first_name": c["first_name"],
@@ -216,8 +217,9 @@ def _sf_search_customers(q: str, limit: int) -> list[dict]:  # pragma: no cover 
             "  (SELECT COUNT(*) FROM ACCOUNT a WHERE a.CUSTOMER_ID = c.CUSTOMER_ID) "
             "FROM CUSTOMER c "
             "WHERE c.CUSTOMER_ID ILIKE %s OR c.FIRST_NAME ILIKE %s OR c.LAST_NAME ILIKE %s "
+            "  OR c.SSN_TIN ILIKE %s "
             "ORDER BY c.CUSTOMER_ID LIMIT %s",
-            (like, like, like, limit))
+            (like, like, like, like, limit))
         return [{"customer_id": r[0], "first_name": r[1], "last_name": r[2],
                  "customer_type": r[3], "account_count": int(r[4] or 0)} for r in cur.fetchall()]
     finally:

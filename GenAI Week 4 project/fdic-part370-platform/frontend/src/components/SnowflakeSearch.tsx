@@ -15,6 +15,10 @@ interface Props {
 
 // Search customers & accounts that already exist in Snowflake and auto-populate
 // the determination forms from the selected record.
+// Fetch a generous page so the initial (empty-query) dropdown isn't truncated
+// alphabetically — otherwise later ORCs (SGL, JNT, TST, MSA, PBA) get cut off.
+const SEARCH_LIMIT = 100;
+
 export default function SnowflakeSearch({ onLoad }: Props) {
   const [custOptions, setCustOptions] = useState<CustomerSearchResult[]>([]);
   const [acctOptions, setAcctOptions] = useState<AccountSearchResult[]>([]);
@@ -25,8 +29,8 @@ export default function SnowflakeSearch({ onLoad }: Props) {
 
   // Prime both lists on mount so the dropdowns aren't empty before typing.
   useEffect(() => {
-    searchCustomers("").then(setCustOptions).catch(() => {});
-    searchAccounts("").then(setAcctOptions).catch(() => {});
+    searchCustomers("", SEARCH_LIMIT).then(setCustOptions).catch(() => {});
+    searchAccounts("", SEARCH_LIMIT).then(setAcctOptions).catch(() => {});
   }, []);
 
   const debounce = (fn: () => void) => {
@@ -66,7 +70,7 @@ export default function SnowflakeSearch({ onLoad }: Props) {
           isOptionEqualToValue={(a, b) => a.customer_id === b.customer_id}
           filterOptions={(x) => x}
           onInputChange={(_, value, reason) => {
-            if (reason === "input") debounce(() => searchCustomers(value).then(setCustOptions).catch(() => {}));
+            if (reason === "input") debounce(() => searchCustomers(value, SEARCH_LIMIT).then(setCustOptions).catch(() => {}));
           }}
           onChange={(_, value) => {
             if (value) load(value.customer_id, `${value.first_name} ${value.last_name}`);
@@ -85,7 +89,7 @@ export default function SnowflakeSearch({ onLoad }: Props) {
           isOptionEqualToValue={(a, b) => a.account_number === b.account_number}
           filterOptions={(x) => x}
           onInputChange={(_, value, reason) => {
-            if (reason === "input") debounce(() => searchAccounts(value).then(setAcctOptions).catch(() => {}));
+            if (reason === "input") debounce(() => searchAccounts(value, SEARCH_LIMIT).then(setAcctOptions).catch(() => {}));
           }}
           onChange={(_, value) => {
             if (value) load(value.customer_id, value.account_number);

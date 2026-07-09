@@ -1,16 +1,23 @@
 # Evals — How Quality Is Measured (LangSmith)
 
-The platform evaluates determinations at **two layers**:
+The platform evaluates determinations at **three layers**:
 
 1. **In-workflow Evals Agent** — runs on *every* determination as the last node
    of the LangGraph workflow ([nodes/output_and_report.py](../backend/app/agents/nodes/output_and_report.py),
    `evals_agent`). Returns PASS / FAIL / WARNING inline with the result, and is
    surfaced as chips in the UI Evidence Panel.
 2. **LangSmith offline eval framework** — runs a labeled dataset through the
-   workflow and scores it with named evaluators
+   workflow and scores it with named **deterministic** evaluators
    ([evals/langsmith_evals.py](../backend/app/evals/langsmith_evals.py)). Used in
    CI and for regression tracking. When LangSmith isn't configured it runs the
    same evaluators in-process (`evaluate_local`).
+3. **Fireworks LLM-as-judge evals** — *qualitative* scores the deterministic
+   evals can't express (rationale grounding, evidence support, plain language),
+   graded by a Fireworks-served model
+   ([evals/fireworks_evals.py](../backend/app/evals/fireworks_evals.py)). They
+   also attach to the same LangSmith experiment. **Free by default**: with no
+   `FIREWORKS_API_KEY` each judge falls back to a deterministic heuristic. See
+   [Fireworks judges](#fireworks-llm-as-judge-evals) below.
 
 ## The evaluators
 
@@ -47,6 +54,36 @@ or routed to the Pending File — catches silently-dropped accounts),
 used a valid §330.11 treatment). These persist to Snowflake
 `LANGSMITH_EVAL_RESULTS` and are mirrored to LangSmith by
 `sync_evals_to_langsmith.py`.
+
+## Fireworks LLM-as-judge evals
+
+The deterministic evaluators above prove the **math** reconciles. They cannot say
+whether the natural-language rationale the platform emits is any good. Three
+Fireworks judges do ([fireworks_evals.py](../backend/app/evals/fireworks_evals.py)):
+
+| Judge | Key | Scores (0..1) |
+|-------|-----|---------------|
+| `judge_rationale_grounding` | `rationale_grounding` | rationale names the right capacity AND cites the coverage rule |
+| `judge_evidence_support` | `evidence_support` | the structured `evidence` is enough to reproduce the insured amount |
+| `judge_plain_language` | `plain_language` | a non-lawyer reviewer could read it |
+
+Each judge calls a Fireworks-served open model over its OpenAI-compatible
+`/chat/completions` API (stdlib `urllib`, no extra dependency), asking for strict
+JSON `{"score", "reason"}`. **Cost control:** when `FIREWORKS_API_KEY` is unset
+(CI, offline, default) every judge falls back to a deterministic heuristic — the
+suite still runs and costs **$0**. Set the key to switch the same judges to the
+model.
+
+```bash
+cd backend
+python scripts/run_fireworks_evals.py           # score the ORC suite (table)
+python scripts/run_fireworks_evals.py --json     # machine-readable
+```
+
+The judges also register as LangSmith evaluators
+(`fireworks_evaluators()` in [langsmith_evals.py](../backend/app/evals/langsmith_evals.py)),
+so `evaluate_langsmith()` posts both the math scores and the judge scores to the
+same experiment.
 
 ## How LangSmith is wired
 

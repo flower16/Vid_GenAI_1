@@ -1,11 +1,16 @@
 import { useState } from "react";
 import {
   Container, AppBar, Toolbar, Typography, Button, Box, CircularProgress, Alert, Stack,
+  Chip, Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import LogoutIcon from "@mui/icons-material/Logout";
 import CustomerForm from "./components/CustomerForm";
 import AccountForm from "./components/AccountForm";
 import EvidencePanel from "./components/EvidencePanel";
+import Login from "./components/Login";
+import SystemStatus from "./components/SystemStatus";
+import { useAuth } from "./auth/AuthContext";
 import { runDetermination } from "./api/client";
 import type { Account, Customer, DeterminationResponse } from "./types";
 
@@ -32,6 +37,7 @@ function acct(account_number: string, product_type: string, balance: number): Ac
 }
 
 export default function App() {
+  const { user, ready, logout } = useAuth();
   const [customer, setCustomer] = useState<Customer>(emptyCustomer);
   const [accounts, setAccounts] = useState<Account[]>(seedAccounts());
   const [result, setResult] = useState<DeterminationResponse | null>(null);
@@ -65,6 +71,16 @@ export default function App() {
     }
   };
 
+  // --- auth gate ---
+  if (!ready) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+  if (!user) return <Login />;
+
   return (
     <>
       <AppBar position="static">
@@ -72,7 +88,18 @@ export default function App() {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             FDIC Part 370 — Insurance Determination Platform
           </Typography>
-          <Typography variant="caption">Agentic AI · LangGraph</Typography>
+          <Typography variant="caption" sx={{ mr: 2 }}>Agentic AI · LangGraph</Typography>
+          <SystemStatus />
+          <Tooltip title={`${user.mode === "sso" ? "Azure AD" : "Demo"} · roles: ${user.roles.join(", ")}`}>
+            <Chip
+              label={`${user.name} (${user.roles[0]})`}
+              size="small" color="default"
+              sx={{ mr: 1, bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }}
+            />
+          </Tooltip>
+          <Button color="inherit" size="small" startIcon={<LogoutIcon />} onClick={logout}>
+            Sign out
+          </Button>
         </Toolbar>
       </AppBar>
       <Container maxWidth="lg" sx={{ py: 3 }}>

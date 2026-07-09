@@ -9,3 +9,7 @@ dist/
 .pytest_cache/
 *.egg-info/
 .DS_Store
+
+# Generated ML artifacts (regenerable via scripts/train_orc_policy.py / export_finetune_dataset.py)
+backend/data/
+backend/models/

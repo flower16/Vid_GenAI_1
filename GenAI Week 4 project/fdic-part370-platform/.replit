@@ -1,0 +1,23 @@
+# Replit run configuration for the FDIC Part 370 platform.
+# One web process: start.sh builds the frontend and runs FastAPI (which serves
+# both the API and the built UI). Set secrets in the Replit "Secrets" pane —
+# they arrive as env vars and are read by backend/app/core/config.py.
+run = "bash start.sh"
+entrypoint = "start.sh"
+modules = ["python-3.12", "nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+ENVIRONMENT = "local"
+PYTHONUNBUFFERED = "1"
+
+# Replit exposes the app on $PORT; map the internal port to public 80/443.
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+run = ["bash", "start.sh"]
+deploymentTarget = "cloudrun"

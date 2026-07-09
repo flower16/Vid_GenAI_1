@@ -33,9 +33,11 @@ trail with iterative recalculation support.
 | Data | Snowflake, SQLAlchemy, Snowpark |
 | Vector store | Pinecone |
 | Integration | MCP server, REST |
-| Auth | Azure AD SSO + RBAC |
-| Deploy | Docker, Kubernetes, Azure AKS |
-| Observability | LangSmith, OpenTelemetry |
+| Auth | Login screen: Azure AD SSO **or** demo role login + RBAC |
+| Evals | LangSmith (deterministic) + Fireworks AI (LLM-as-judge) |
+| Learning | Zero-cost RL ORC policy (pure Python) + Fireworks fine-tune export |
+| Deploy | Replit (single process), Docker, Kubernetes, Azure AKS |
+| Observability | LangSmith, OpenTelemetry, `/health/integrations` |
 
 ## Supported ORCs
 
@@ -57,7 +59,22 @@ cases, validation, pending rules, and worked sample calculations.
 
 Diagrams: [docs/architecture.md](docs/architecture.md). Full session walkthrough
 (setup, BUS branching, integrations, troubleshooting): [WALKTHROUGH.md](WALKTHROUGH.md).
-Eval framework + Snowflake↔LangSmith bridge: [docs/evals.md](docs/evals.md).
+Eval framework (LangSmith deterministic + Fireworks LLM-as-judge) + Snowflake↔LangSmith
+bridge: [docs/evals.md](docs/evals.md). Fine-tuning vs the zero-cost RL policy:
+[docs/fine-tuning-and-rl.md](docs/fine-tuning-and-rl.md).
+
+## Login
+
+The frontend opens on a **login screen** ([frontend/src/components/Login.tsx](frontend/src/components/Login.tsx)):
+
+- **Azure AD SSO** — enabled when `VITE_AZURE_CLIENT_ID` is set (MSAL popup,
+  acquires the API bearer token).
+- **Demo access** — pick a display name + RBAC role (Analyst / Reviewer / Admin)
+  and enter. Works with no Azure tenant (the backend's `local` env grants an
+  Admin principal); the session persists in `sessionStorage`. Sign-out clears it.
+
+Auth wiring: [frontend/src/auth/AuthContext.tsx](frontend/src/auth/AuthContext.tsx),
+`frontend/.env.example`.
 
 ## Quickstart (local, no external services required)
 
@@ -66,7 +83,7 @@ Eval framework + Snowflake↔LangSmith bridge: [docs/evals.md](docs/evals.md).
 cd backend
 python -m venv .venv && source .venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
-pytest -q                                               # 43 tests pass (ORC calcs + BUS branches + workflow + evals)
+pytest -q                                               # 48 tests pass (ORC calcs + BUS branches + workflow + evals + RL policy + Fireworks judges)
 uvicorn app.main:app --reload                           # http://localhost:8000/docs
 
 # MCP server (separate shell)
@@ -79,7 +96,22 @@ npm install && npm run dev                              # http://localhost:5173
 
 In `ENVIRONMENT=local`, Azure AD auth is bypassed (synthetic Admin), RAG uses the
 in-code rule corpus, and persistence writes to `audit_log.jsonl`. Wire `.env`
-(see `.env.example`) to enable Pinecone, Snowflake, LangSmith, and Azure AD.
+(see `.env.example`) to enable Pinecone, Snowflake, LangSmith, Fireworks, and
+Azure AD.
+
+### Integrations & deploy
+
+Check which external services are wired and reachable at any time:
+
+```bash
+cd backend
+python scripts/check_integrations.py --live   # LangSmith / Fireworks / Snowflake / Azure AD / Pinecone
+# or GET /api/v1/health/integrations?live=true  (also shown as the AppBar "Integrations N/5" chip)
+```
+
+**One-click Replit hosting** runs the whole stack as a single web process
+(`start.sh` builds the UI and FastAPI serves it same-origin). Setup + the health
+layer: [docs/integrations.md](docs/integrations.md).
 
 ## Folder structure
 
@@ -103,11 +135,15 @@ fdic-part370-platform/
 │   │   ├── rag/retriever.py        # Pinecone RAG + deterministic fallback
 │   │   ├── files/generators.py     # FDIC output files (pipe-delimited)
 │   │   ├── reports/summary.py      # Summary Report Tables 1-3
-│   │   ├── evals/langsmith_evals.py# Input/Output/System eval framework
+│   │   ├── evals/
+│   │   │   ├── langsmith_evals.py   # deterministic Input/Output/System evals
+│   │   │   └── fireworks_evals.py   # LLM-as-judge evals (free heuristic fallback)
+│   │   ├── ml/orc_policy.py         # zero-cost RL ORC classifier (pure Python)
 │   │   ├── db/persistence.py       # Snowflake (SQLAlchemy) + local fallback
 │   │   └── mcp/server.py           # MCP server (10 tools)
 │   ├── scripts/                    # init_snowflake, seed_pinecone, seed_langsmith_dataset,
-│   │                               #   seed_snowflake_inputs, sync_evals_to_langsmith
+│   │                               #   seed_snowflake_inputs, sync_evals_to_langsmith,
+│   │                               #   run_fireworks_evals, train_orc_policy, export_finetune_dataset
 │   ├── tests/                      # per-ORC sample calcs + BUS branches + workflow + evals
 │   └── requirements.txt
 ├── frontend/                       # React + MUI + AG Grid + MSAL
@@ -135,8 +171,9 @@ fdic-part370-platform/
 
 ## Verification status
 
-- ✅ `domain/orc/engine.py` — **43 tests pass** (`pytest`): per-ORC sample calcs,
-  the three BUS §330.11 branches, full workflow, and eval framework.
+- ✅ **48 tests pass** (`pytest`): per-ORC sample calcs, the three BUS §330.11
+  branches, full workflow, the eval framework, the RL ORC policy (converges to
+  100% train/hold-out), and the Fireworks judges (heuristic-fallback path).
 - ✅ LangSmith evals: 7 evaluators over a 16-example dataset (one per ORC + a 2nd
   BUS branch); per-determination evals persist to Snowflake and sync to LangSmith
   via `scripts/sync_evals_to_langsmith.py`. See [docs/evals.md](docs/evals.md).

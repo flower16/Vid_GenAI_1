@@ -8,12 +8,20 @@ from fastapi import APIRouter, Depends
 
 from ..agents.graph import run_determination
 from ..core.auth import Principal, require
+from ..core.integrations import integration_report
 from ..domain.constants import ORC
 from ..domain.models import CoverageResult, DeterminationRequest
 from ..domain.orc.rules import ORC_RULES
 from ..db.persistence import persist_determination
 
 router = APIRouter(prefix="/api/v1", tags=["determination"])
+
+
+@router.get("/health/integrations", tags=["health"])
+def health_integrations(live: bool = False) -> dict:
+    """Status of every external integration (Snowflake, LangSmith, Fireworks,
+    Azure AD, Pinecone). `?live=true` also pings each configured service."""
+    return integration_report(live=live)
 
 
 @router.get("/orcs")

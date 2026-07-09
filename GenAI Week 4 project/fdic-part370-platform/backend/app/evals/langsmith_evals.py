@@ -9,7 +9,7 @@ configured, `evaluate_local` runs the same evaluators in-process (used by CI).
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Callable
+from typing import Any, Callable
 
 from ..agents.graph import run_determination
 from ..domain.models import DeterminationRequest
@@ -87,6 +87,30 @@ OUTPUT_EVALS: list[Callable] = [eval_pi_reconciles, eval_limits_respected,
 ALL_EVALS = INPUT_EVALS + OUTPUT_EVALS
 
 
+# ---- Fireworks LLM-as-judge evaluators (qualitative), wrapped for LangSmith ----
+def fireworks_evaluators() -> list[Callable]:
+    """The Fireworks judges ([fireworks_evals.py](fireworks_evals.py)) exposed with
+    the `(output, example)` signature so they attach to the LangSmith runner
+    alongside the deterministic math evals. They average each judge over every
+    coverage result and return a continuous 0..1 score. Free by default (the
+    judges fall back to a heuristic until FIREWORKS_API_KEY is set)."""
+    from .fireworks_evals import JUDGES
+
+    def _wrap(judge: Callable) -> Callable:
+        def _ev(output: dict, example: dict) -> dict:
+            results = output.get("coverage_results", [])
+            if not results:
+                return {"key": judge(dict())["key"], "score": 1, "comment": "no coverage"}
+            scored = [judge(r) for r in results]
+            mean = sum(s["score"] for s in scored) / len(scored)
+            return {"key": scored[0]["key"], "score": round(mean, 3),
+                    "comment": f"{scored[0]['grader']} judge, mean over {len(scored)} ORC(s)"}
+        _ev.__name__ = judge.__name__
+        return _ev
+
+    return [_wrap(j) for j in JUDGES]
+
+
 def _target(example: dict) -> dict:
     req = DeterminationRequest(**example["inputs"])
     state = run_determination(req)
@@ -128,10 +152,13 @@ def evaluate_langsmith(dataset_name: str) -> Any:  # pragma: no cover - external
         _evaluator.__name__ = fn.__name__
         return _evaluator
 
+    # Deterministic math evals + the Fireworks LLM-as-judge evals, both attached
+    # to the same LangSmith experiment.
+    evaluators = ALL_EVALS + fireworks_evaluators()
     return evaluate(
         target,
         data=dataset_name,
-        evaluators=[_make_evaluator(e) for e in ALL_EVALS],
+        evaluators=[_make_evaluator(e) for e in evaluators],
         experiment_prefix="fdic-part370",
         client=client,
     )

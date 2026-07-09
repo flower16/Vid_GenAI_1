@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     langsmith_project: str = "fdic-part370"
     langsmith_tracing: bool = False
 
+    # Fireworks AI (LLM-as-judge evals + optional fine-tuning path)
+    fireworks_api_key: Optional[str] = None
+    # OpenAI-compatible chat endpoint; served OSS model keeps the judge cheap.
+    fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"
+    fireworks_judge_model: str = "accounts/fireworks/models/llama-v3p1-8b-instruct"
+
     # Pinecone
     pinecone_api_key: Optional[str] = None
     pinecone_index: str = "fdic-part370"
@@ -63,6 +69,7 @@ def _export_to_env(s: Settings) -> None:
         ("LANGCHAIN_API_KEY", s.langsmith_api_key),
         ("LANGCHAIN_PROJECT", s.langsmith_project),
         ("LANGCHAIN_TRACING_V2", "true" if s.langsmith_tracing else None),
+        ("FIREWORKS_API_KEY", s.fireworks_api_key),
     ):
         if value and not os.environ.get(env_name):
             os.environ[env_name] = value

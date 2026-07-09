@@ -10,6 +10,7 @@ import AccountForm from "./components/AccountForm";
 import EvidencePanel from "./components/EvidencePanel";
 import Login from "./components/Login";
 import SystemStatus from "./components/SystemStatus";
+import SnowflakeSearch from "./components/SnowflakeSearch";
 import { useAuth } from "./auth/AuthContext";
 import { runDetermination } from "./api/client";
 import type { Account, Customer, DeterminationResponse } from "./types";
@@ -58,6 +59,15 @@ export default function App() {
     (s, a) => s + Number(a.balance) + Number(a.accrued_interest), 0
   );
 
+  // Auto-populate the forms from a Snowflake customer/account record.
+  const loadFromSnowflake = (c: Customer, accts: Account[]) => {
+    setCustomer(c);
+    setAccounts(accts.length ? accts : seedAccounts());
+    setResult(null);
+    setSubmitted(null);
+    setError(null);
+  };
+
   const onCalculate = async () => {
     setLoading(true); setError(null);
     try {
@@ -103,6 +113,7 @@ export default function App() {
         </Toolbar>
       </AppBar>
       <Container maxWidth="lg" sx={{ py: 3 }}>
+        <SnowflakeSearch onLoad={loadFromSnowflake} />
         <CustomerForm customer={customer} onChange={setCustomer} />
 
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>

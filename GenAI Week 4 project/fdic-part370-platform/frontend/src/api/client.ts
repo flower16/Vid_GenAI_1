@@ -35,6 +35,47 @@ export async function getIntegrations(live = false): Promise<IntegrationsHealth>
   return data;
 }
 
+// --- Snowflake directory (customer/account lookup) ---
+export interface CustomerSearchResult {
+  customer_id: string;
+  first_name: string;
+  last_name: string;
+  customer_type?: string;
+  account_count: number;
+}
+export interface AccountSearchResult {
+  account_number: string;
+  customer_id: string;
+  orc: string;
+  product_type: string;
+  balance: number;
+}
+export interface CustomerDetail {
+  customer: Customer;
+  accounts: Account[];
+}
+
+export async function searchCustomers(q: string, limit = 10): Promise<CustomerSearchResult[]> {
+  const { data } = await api.get<CustomerSearchResult[]>("/api/v1/customers/search", {
+    params: { q, limit },
+  });
+  return data;
+}
+
+export async function searchAccounts(q: string, limit = 10): Promise<AccountSearchResult[]> {
+  const { data } = await api.get<AccountSearchResult[]>("/api/v1/accounts/search", {
+    params: { q, limit },
+  });
+  return data;
+}
+
+export async function getCustomerDetail(customerId: string): Promise<CustomerDetail> {
+  const { data } = await api.get<CustomerDetail>(
+    `/api/v1/customers/${encodeURIComponent(customerId)}`
+  );
+  return data;
+}
+
 export async function fetchOrcs() {
   const { data } = await api.get<{ code: string; name: string; smdia: string }[]>(
     "/api/v1/orcs"

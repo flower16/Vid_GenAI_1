@@ -4,17 +4,42 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..agents.graph import run_determination
-from ..core.auth import Principal, require
+from ..core.auth import Principal, get_principal, require
 from ..core.integrations import integration_report
+from ..db import directory
 from ..domain.constants import ORC
 from ..domain.models import CoverageResult, DeterminationRequest
 from ..domain.orc.rules import ORC_RULES
 from ..db.persistence import persist_determination
 
 router = APIRouter(prefix="/api/v1", tags=["determination"])
+
+
+@router.get("/customers/search", tags=["directory"])
+def search_customers(q: str = "", limit: int = 10,
+                     _: Principal = Depends(get_principal)) -> list[dict]:
+    """Search Snowflake customers by id / first / last name (for the UI lookup)."""
+    return directory.search_customers(q, limit)
+
+
+@router.get("/customers/{customer_id}", tags=["directory"])
+def get_customer(customer_id: str, _: Principal = Depends(get_principal)) -> dict:
+    """Full customer + their accounts from Snowflake, ready to auto-populate the
+    determination form."""
+    detail = directory.get_customer_detail(customer_id)
+    if detail is None:
+        raise HTTPException(404, f"Customer '{customer_id}' not found")
+    return detail
+
+
+@router.get("/accounts/search", tags=["directory"])
+def search_accounts(q: str = "", limit: int = 10,
+                    _: Principal = Depends(get_principal)) -> list[dict]:
+    """Search Snowflake accounts by account number / customer id / ORC."""
+    return directory.search_accounts(q, limit)
 
 
 @router.get("/health/integrations", tags=["health"])

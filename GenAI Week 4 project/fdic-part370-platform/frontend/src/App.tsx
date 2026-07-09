@@ -59,26 +59,33 @@ export default function App() {
     (s, a) => s + Number(a.balance) + Number(a.accrued_interest), 0
   );
 
-  // Auto-populate the forms from a Snowflake customer/account record.
-  const loadFromSnowflake = (c: Customer, accts: Account[]) => {
-    setCustomer(c);
-    setAccounts(accts.length ? accts : seedAccounts());
-    setResult(null);
-    setSubmitted(null);
-    setError(null);
-  };
-
-  const onCalculate = async () => {
+  // Run a determination for an explicit customer/account set (shared by the
+  // Calculate button and the Snowflake auto-run on load).
+  const runFor = async (cust: Customer, accts: Account[]) => {
     setLoading(true); setError(null);
     try {
-      const withCust = accounts.map((a) => ({ ...a, customer_id: customer.customer_id }));
-      setResult(await runDetermination(customer, withCust));
-      setSubmitted({ accounts: withCust, customer });
+      const withCust = accts.map((a) => ({ ...a, customer_id: cust.customer_id }));
+      setResult(await runDetermination(cust, withCust));
+      setSubmitted({ accounts: withCust, customer: cust });
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const onCalculate = () => runFor(customer, accounts);
+
+  // Auto-populate the forms from a Snowflake record and immediately show its
+  // coverage inline (skip the auto-run if the record has no accounts to price).
+  const loadFromSnowflake = (c: Customer, accts: Account[]) => {
+    const next = accts.length ? accts : seedAccounts();
+    setCustomer(c);
+    setAccounts(next);
+    setResult(null);
+    setSubmitted(null);
+    setError(null);
+    if (accts.length) void runFor(c, next);
   };
 
   // --- auth gate ---

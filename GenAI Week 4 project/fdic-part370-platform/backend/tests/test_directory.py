@@ -24,6 +24,11 @@ def test_search_customers_matches_id_and_name():
     assert len(directory.search_customers("", limit=100)) == len(directory.SAMPLE_CUSTOMERS)
 
 
+def test_search_customers_by_ssn_tin():
+    # SF-SGL has SSN 123-45-6789.
+    assert directory.search_customers("123-45-6789")[0]["customer_id"] == "SF-SGL"
+
+
 def test_search_accounts_matches_orc():
     accts = directory.search_accounts("TST")
     assert accts and accts[0]["account_number"] == "SF-TST-A1"

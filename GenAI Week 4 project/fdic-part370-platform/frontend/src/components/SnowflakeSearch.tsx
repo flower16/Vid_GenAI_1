@@ -72,7 +72,7 @@ export default function SnowflakeSearch({ onLoad }: Props) {
             if (value) load(value.customer_id, `${value.first_name} ${value.last_name}`);
           }}
           renderInput={(params) => (
-            <TextField {...params} label="Search customer (id / name)" size="small" />
+            <TextField {...params} label="Search customer (id / name / SSN-TIN)" size="small" />
           )}
         />
 

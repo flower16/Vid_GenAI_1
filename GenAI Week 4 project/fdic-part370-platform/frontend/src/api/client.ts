@@ -62,9 +62,13 @@ export async function searchCustomers(q: string, limit = 10): Promise<CustomerSe
   return data;
 }
 
-export async function searchAccounts(q: string, limit = 10): Promise<AccountSearchResult[]> {
+export async function searchAccounts(
+  q: string,
+  limit = 10,
+  customerId?: string
+): Promise<AccountSearchResult[]> {
   const { data } = await api.get<AccountSearchResult[]>("/api/v1/accounts/search", {
-    params: { q, limit },
+    params: { q, limit, customer_id: customerId },
   });
   return data;
 }

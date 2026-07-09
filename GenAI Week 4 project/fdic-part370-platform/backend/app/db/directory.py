@@ -148,13 +148,13 @@ def search_customers(q: str, limit: int = 10) -> list[dict]:
     return _local_search_customers(q, limit)
 
 
-def search_accounts(q: str, limit: int = 10) -> list[dict]:
+def search_accounts(q: str, limit: int = 10, customer_id: str | None = None) -> list[dict]:
     if _use_snowflake():
         try:
-            return _sf_search_accounts(q, limit)
+            return _sf_search_accounts(q, limit, customer_id)
         except Exception as exc:  # pragma: no cover - external
             logger.warning("Snowflake account search failed, using local: %s", exc)
-    return _local_search_accounts(q, limit)
+    return _local_search_accounts(q, limit, customer_id)
 
 
 def get_customer_detail(customer_id: str) -> Optional[dict]:
@@ -187,9 +187,11 @@ def _local_search_customers(q: str, limit: int) -> list[dict]:
     return out
 
 
-def _local_search_accounts(q: str, limit: int) -> list[dict]:
+def _local_search_accounts(q: str, limit: int, customer_id: str | None = None) -> list[dict]:
     out = []
     for a in SAMPLE_ACCOUNTS:
+        if customer_id and a["customer_id"] != customer_id:
+            continue
         hay = f"{a['account_number']} {a['customer_id']} {a['orc']} {a['product_type']}"
         if not q or _match(hay, q):
             out.append({"account_number": a["account_number"], "customer_id": a["customer_id"],
@@ -242,15 +244,21 @@ def _sf_search_customers(q: str, limit: int) -> list[dict]:  # pragma: no cover 
         conn.close()
 
 
-def _sf_search_accounts(q: str, limit: int) -> list[dict]:  # pragma: no cover - external
+def _sf_search_accounts(q: str, limit: int,
+                        customer_id: str | None = None) -> list[dict]:  # pragma: no cover - external
     like = f"%{q}%"
     conn = _connect()
     try:
         cur = conn.cursor()
+        # Optional exact customer scope so the UI can restrict accounts to the
+        # selected customer.
+        scope = "CUSTOMER_ID = %s AND " if customer_id else ""
+        params: tuple = (customer_id, like, like, like, limit) if customer_id \
+            else (like, like, like, limit)
         cur.execute(
             "SELECT ACCOUNT_NUMBER, CUSTOMER_ID, ORC, PRODUCT_TYPE, BALANCE FROM ACCOUNT "
-            "WHERE ACCOUNT_NUMBER ILIKE %s OR CUSTOMER_ID ILIKE %s OR ORC ILIKE %s "
-            "ORDER BY ACCOUNT_NUMBER LIMIT %s", (like, like, like, limit))
+            f"WHERE {scope}(ACCOUNT_NUMBER ILIKE %s OR CUSTOMER_ID ILIKE %s OR ORC ILIKE %s) "
+            "ORDER BY ACCOUNT_NUMBER LIMIT %s", params)
         return [{"account_number": r[0], "customer_id": r[1], "orc": r[2],
                  "product_type": r[3], "balance": float(r[4] or 0)} for r in cur.fetchall()]
     finally:

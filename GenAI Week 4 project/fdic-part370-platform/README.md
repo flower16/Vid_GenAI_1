@@ -99,6 +99,18 @@ in-code rule corpus, and persistence writes to `audit_log.jsonl`. Wire `.env`
 (see `.env.example`) to enable Pinecone, Snowflake, LangSmith, Fireworks, and
 Azure AD.
 
+### Load existing customers/accounts from Snowflake
+
+The UI has a **"Load from Snowflake"** panel ([SnowflakeSearch.tsx](frontend/src/components/SnowflakeSearch.tsx)):
+type in the customer (id / name) or account (number / ORC) box, pick a record,
+and the customer + all their accounts (owners / beneficiaries / participants)
+**auto-populate** the determination form. Backed by read endpoints
+`GET /api/v1/customers/search`, `/api/v1/customers/{id}`, `/api/v1/accounts/search`
+over `FDIC_PART370.CORE` ([db/directory.py](backend/app/db/directory.py)). Seed
+browsable sample rows with `python scripts/seed_snowflake_inputs.py`; when
+Snowflake isn't configured the same lookups fall back to an in-code sample so the
+feature still works in demo mode.
+
 ### Integrations & deploy
 
 Check which external services are wired and reachable at any time:

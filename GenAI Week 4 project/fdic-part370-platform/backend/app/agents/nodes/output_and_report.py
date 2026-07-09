@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from ...core.config import settings
 from ...domain.constants import ORC
 from ...domain.models import EvalResult
 from ...files import generators as gen
@@ -91,5 +92,34 @@ def evals_agent(state: DeterminationState) -> dict:
                               detail=("no BUS accounts" if not bus_results
                                       else f"treatments: {[r.evidence.get('treatment') for r in bus_results]}")))
 
+    # 8-10. Fireworks LLM-as-judge evals (qualitative). These persist to Snowflake
+    # and sync to LangSmith through the same eval_results path as the checks above,
+    # so both eval families live in one place. Free by default (heuristic fallback).
+    results.extend(_fireworks_evals(state))
+
     return {"eval_results": [r.model_dump() for r in results],
             "trace": [{"agent": "evals", "checks": len(results)}]}
+
+
+def _fireworks_evals(state: DeterminationState) -> list[EvalResult]:
+    """Run the Fireworks judges over the coverage results and map their 0..1
+    scores to PASS (>=0.75) / WARNING (>=0.5) / FAIL. Never raises — a judge
+    failure must not break a determination."""
+    if not settings.fireworks_evals_in_workflow:
+        return []
+    try:
+        from ...evals.fireworks_evals import evaluate_determination
+        coverage = [r.model_dump(mode="json") for r in state.get("coverage_results", [])]
+        if not coverage:
+            return []
+        report = evaluate_determination(coverage)
+        out: list[EvalResult] = []
+        for key, agg in report["by_judge"].items():
+            mean = agg["mean"]
+            status = "PASS" if mean >= 0.75 else "WARNING" if mean >= 0.5 else "FAIL"
+            out.append(EvalResult(name=f"fw_{key}", status=status,
+                                  detail=f"{report['grader']} judge, mean={mean} "
+                                         f"over {len(coverage)} ORC(s)"))
+        return out
+    except Exception:  # noqa: BLE001 - evals must never break a determination
+        return []

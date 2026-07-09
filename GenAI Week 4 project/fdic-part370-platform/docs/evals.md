@@ -51,7 +51,8 @@ The in-workflow Evals Agent runs **7 self-checks** on every determination:
 deposits), `accounts_fully_accounted` (every input account ends up either covered
 or routed to the Pending File — catches silently-dropped accounts),
 `ssn_validation` (SSN/TIN issues flagged), and `bus_treatment` (any BUS coverage
-used a valid §330.11 treatment). These persist to Snowflake
+used a valid §330.11 treatment) — **plus the three Fireworks judges** (`fw_*`)
+when `FIREWORKS_EVALS_IN_WORKFLOW=true`. These all persist to Snowflake
 `LANGSMITH_EVAL_RESULTS` and are mirrored to LangSmith by
 `sync_evals_to_langsmith.py`.
 
@@ -84,6 +85,17 @@ The judges also register as LangSmith evaluators
 (`fireworks_evaluators()` in [langsmith_evals.py](../backend/app/evals/langsmith_evals.py)),
 so `evaluate_langsmith()` posts both the math scores and the judge scores to the
 same experiment.
+
+**In-workflow persistence (both eval families in Snowflake).** When
+`FIREWORKS_EVALS_IN_WORKFLOW=true` (default), the Evals Agent runs the judges on
+*every* determination and emits their scores as `fw_rationale_grounding`,
+`fw_evidence_support`, `fw_plain_language` (0..1 mapped to PASS ≥0.75 / WARNING
+≥0.5 / FAIL) alongside the deterministic checks. Because they ride the same
+`eval_results` path, they persist to the Snowflake `LANGSMITH_EVAL_RESULTS` table
+**and** auto-sync to LangSmith — so one determination yields the deterministic
+evals *and* the Fireworks judge scores in both systems. Set the flag to `false`
+to skip per-determination judging (e.g. once a paid `FIREWORKS_API_KEY` is set
+and you don't want a model call per determination; the default heuristic is free).
 
 ## How LangSmith is wired
 

@@ -74,3 +74,24 @@ def test_evaluate_determination_aggregates():
     assert set(report["by_judge"]) == {"rationale_grounding", "evidence_support", "plain_language"}
     assert report["passed"] is True
     assert 0.0 <= report["mean_score"] <= 1.0
+
+
+def test_fireworks_judges_persist_via_in_workflow_evals():
+    """The in-workflow evals agent emits the Fireworks judge scores (fw_*)
+    alongside the deterministic checks, so both land in Snowflake / LangSmith."""
+    from decimal import Decimal
+    from app.agents.graph import run_determination
+    from app.domain.constants import ORC, CustomerType
+    from app.domain.models import Account, Customer, DeterminationRequest
+
+    req = DeterminationRequest(
+        customer=Customer(customer_id="C1", first_name="Jane", last_name="Doe",
+                          ssn_tin="123-45-6789", customer_type=CustomerType.INDIVIDUAL,
+                          address="1 Main St", email="j@x.com", phone="555-1234"),
+        accounts=[Account(account_number="A1", customer_id="C1", orc=ORC.SGL,
+                          balance=Decimal("350000"))])
+    names = {e["name"] for e in run_determination(req)["eval_results"]}
+    # Deterministic evals still present...
+    assert {"input_completeness", "deposit_balance_reconciliation"} <= names
+    # ...plus the three Fireworks judges, prefixed fw_.
+    assert {"fw_rationale_grounding", "fw_evidence_support", "fw_plain_language"} <= names

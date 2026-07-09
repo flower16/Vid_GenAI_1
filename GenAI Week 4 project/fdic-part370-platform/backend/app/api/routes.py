@@ -36,10 +36,11 @@ def get_customer(customer_id: str, _: Principal = Depends(get_principal)) -> dic
 
 
 @router.get("/accounts/search", tags=["directory"])
-def search_accounts(q: str = "", limit: int = 10,
+def search_accounts(q: str = "", limit: int = 10, customer_id: str | None = None,
                     _: Principal = Depends(get_principal)) -> list[dict]:
-    """Search Snowflake accounts by account number / customer id / ORC."""
-    return directory.search_accounts(q, limit)
+    """Search Snowflake accounts by account number / customer id / ORC, optionally
+    scoped to a single `customer_id`."""
+    return directory.search_accounts(q, limit, customer_id)
 
 
 @router.get("/health/integrations", tags=["health"])

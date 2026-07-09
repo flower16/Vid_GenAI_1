@@ -40,6 +40,13 @@ def test_customer_detail_includes_demographics():
     assert cust["address"] and cust["email"] and cust["phone"]
 
 
+def test_account_search_scoped_to_customer():
+    scoped = directory.search_accounts("", limit=100, customer_id="SF-JNT")
+    assert scoped and all(a["customer_id"] == "SF-JNT" for a in scoped)
+    # Unscoped returns accounts across many customers.
+    assert len({a["customer_id"] for a in directory.search_accounts("", limit=100)}) > 1
+
+
 def test_customer_detail_shapes_parties():
     detail = directory.get_customer_detail("SF-TST")
     assert detail["customer"]["customer_type"] == "TRUST"

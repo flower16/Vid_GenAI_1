@@ -36,13 +36,15 @@ from app.db.directory import (  # noqa: E402
 # Build Snowflake INSERT tuples from the canonical sample directory (single
 # source of truth shared with app/db/directory.py's local fallback).
 CUSTOMERS = [(c["customer_id"], c["first_name"], c["last_name"], c["ssn_tin"],
-              c["customer_type"]) for c in SAMPLE_CUSTOMERS]
+              c["customer_type"], c.get("address", ""), c.get("email", ""),
+              c.get("phone", "")) for c in SAMPLE_CUSTOMERS]
 
 ACCOUNTS = [(a["account_number"], a["customer_id"], a["orc"], a["product_type"],
              str(a["balance"]), str(a["accrued_interest"])) for a in SAMPLE_ACCOUNTS]
 
 PARTICIPANTS = [(p["account_number"], p["party_id"], p["role"], p["name"],
-                 str(p["vested_interest"])) for p in SAMPLE_PARTICIPANTS]
+                 str(p.get("interest_pct", 0)), str(p["vested_interest"]))
+                for p in SAMPLE_PARTICIPANTS]
 
 
 def main() -> int:
@@ -76,8 +78,9 @@ def main() -> int:
         cur.execute("DELETE FROM CUSTOMER WHERE CUSTOMER_ID LIKE 'SF-%'")
 
         cur.executemany(
-            "INSERT INTO CUSTOMER (CUSTOMER_ID, FIRST_NAME, LAST_NAME, SSN_TIN, CUSTOMER_TYPE) "
-            "VALUES (%s, %s, %s, %s, %s)", CUSTOMERS)
+            "INSERT INTO CUSTOMER (CUSTOMER_ID, FIRST_NAME, LAST_NAME, SSN_TIN, "
+            "CUSTOMER_TYPE, ADDRESS, EMAIL, PHONE) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", CUSTOMERS)
         acct_rows = [(num, cust, prod, bal, intr, orc)
                      for (num, cust, orc, prod, bal, intr) in ACCOUNTS]
         cur.executemany(
@@ -85,7 +88,7 @@ def main() -> int:
             "ACCRUED_INTEREST, ORC) VALUES (%s, %s, %s, %s, %s, %s)", acct_rows)
         cur.executemany(
             "INSERT INTO ACCOUNT_PARTICIPANT (ACCOUNT_NUMBER, PARTY_ID, PARTY_ROLE, NAME, "
-            "VESTED_INTEREST) VALUES (%s, %s, %s, %s, %s)", PARTICIPANTS)
+            "INTEREST_PCT, VESTED_INTEREST) VALUES (%s, %s, %s, %s, %s, %s)", PARTICIPANTS)
 
         for t in ("CUSTOMER", "ACCOUNT", "ACCOUNT_PARTICIPANT"):
             cur.execute(f"SELECT COUNT(*) FROM {t} WHERE "

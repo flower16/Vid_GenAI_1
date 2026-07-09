@@ -26,61 +26,76 @@ logger = logging.getLogger(__name__)
 # the seeded Snowflake rows are identical.
 # --------------------------------------------------------------------------- #
 SAMPLE_CUSTOMERS: list[dict] = [
-    {"customer_id": "SF-SGL", "first_name": "Jane", "last_name": "Doe", "ssn_tin": "123-45-6789", "customer_type": "INDIVIDUAL"},
-    {"customer_id": "SF-JNT", "first_name": "John", "last_name": "Smith", "ssn_tin": "234-56-7890", "customer_type": "JOINT"},
-    {"customer_id": "SF-TST", "first_name": "Mary", "last_name": "Grantor", "ssn_tin": "345-67-8901", "customer_type": "TRUST"},
-    {"customer_id": "SF-CRA", "first_name": "Robert", "last_name": "Retiree", "ssn_tin": "456-78-9012", "customer_type": "INDIVIDUAL"},
-    {"customer_id": "SF-EBP", "first_name": "Acme", "last_name": "Plan", "ssn_tin": "12-3456701", "customer_type": "PLAN"},
-    {"customer_id": "SF-BUS", "first_name": "Acme", "last_name": "Corp", "ssn_tin": "12-3456702", "customer_type": "BUSINESS"},
-    {"customer_id": "SF-GOV1", "first_name": "City", "last_name": "Treasury", "ssn_tin": "12-3456703", "customer_type": "GOVERNMENT"},
-    {"customer_id": "SF-GOV2", "first_name": "City", "last_name": "Treasury", "ssn_tin": "12-3456704", "customer_type": "GOVERNMENT"},
-    {"customer_id": "SF-GOV3", "first_name": "State", "last_name": "Treasury", "ssn_tin": "12-3456705", "customer_type": "GOVERNMENT"},
-    {"customer_id": "SF-MSA", "first_name": "Home", "last_name": "Servicer", "ssn_tin": "12-3456706", "customer_type": "FIDUCIARY"},
-    {"customer_id": "SF-PBA", "first_name": "Muni", "last_name": "Issuer", "ssn_tin": "12-3456707", "customer_type": "GOVERNMENT"},
-    {"customer_id": "SF-DIT", "first_name": "Trust", "last_name": "IDI", "ssn_tin": "12-3456708", "customer_type": "FIDUCIARY"},
-    {"customer_id": "SF-ANC", "first_name": "Life", "last_name": "Insurer", "ssn_tin": "12-3456709", "customer_type": "BUSINESS"},
-    {"customer_id": "SF-BIA", "first_name": "BIA", "last_name": "Custodian", "ssn_tin": "12-3456710", "customer_type": "FIDUCIARY"},
-    {"customer_id": "SF-DOE", "first_name": "DOE", "last_name": "Program", "ssn_tin": "12-3456711", "customer_type": "BUSINESS"},
+    {"customer_id": "SF-SGL", "first_name": "Jane", "last_name": "Doe", "ssn_tin": "123-45-6789", "customer_type": "INDIVIDUAL", "address": "100 Main St, Springfield, IL 62701", "email": "jane.doe@example.com", "phone": "217-555-0101"},
+    {"customer_id": "SF-JNT", "first_name": "John", "last_name": "Smith", "ssn_tin": "234-56-7890", "customer_type": "JOINT", "address": "22 Oak Ave, Madison, WI 53703", "email": "john.smith@example.com", "phone": "608-555-0102"},
+    {"customer_id": "SF-TST", "first_name": "Mary", "last_name": "Grantor", "ssn_tin": "345-67-8901", "customer_type": "TRUST", "address": "8 Elm Rd, Columbus, OH 43215", "email": "mary.grantor@example.com", "phone": "614-555-0103"},
+    {"customer_id": "SF-CRA", "first_name": "Robert", "last_name": "Retiree", "ssn_tin": "456-78-9012", "customer_type": "INDIVIDUAL", "address": "5 Pine Ln, Austin, TX 78701", "email": "robert.retiree@example.com", "phone": "512-555-0104"},
+    {"customer_id": "SF-EBP", "first_name": "Acme", "last_name": "Plan", "ssn_tin": "12-3456701", "customer_type": "PLAN", "address": "400 Corporate Blvd, Newark, NJ 07102", "email": "benefits@acmeplan.example.com", "phone": "973-555-0105"},
+    {"customer_id": "SF-BUS", "first_name": "Acme", "last_name": "Corp", "ssn_tin": "12-3456702", "customer_type": "BUSINESS", "address": "1 Industry Way, Detroit, MI 48226", "email": "treasury@acmecorp.example.com", "phone": "313-555-0106"},
+    {"customer_id": "SF-GOV1", "first_name": "City", "last_name": "Treasury", "ssn_tin": "12-3456703", "customer_type": "GOVERNMENT", "address": "City Hall, 1 Civic Center, Denver, CO 80202", "email": "treasury@denver.gov.example.com", "phone": "720-555-0107"},
+    {"customer_id": "SF-GOV2", "first_name": "City", "last_name": "Treasury", "ssn_tin": "12-3456704", "customer_type": "GOVERNMENT", "address": "City Hall, 2 Civic Center, Denver, CO 80202", "email": "demand@denver.gov.example.com", "phone": "720-555-0108"},
+    {"customer_id": "SF-GOV3", "first_name": "State", "last_name": "Treasury", "ssn_tin": "12-3456705", "customer_type": "GOVERNMENT", "address": "State Capitol, Sacramento, CA 95814", "email": "treasury@ca.gov.example.com", "phone": "916-555-0109"},
+    {"customer_id": "SF-MSA", "first_name": "Home", "last_name": "Servicer", "ssn_tin": "12-3456706", "customer_type": "FIDUCIARY", "address": "300 Loan Plaza, Charlotte, NC 28202", "email": "escrow@homeservicer.example.com", "phone": "704-555-0110"},
+    {"customer_id": "SF-PBA", "first_name": "Muni", "last_name": "Issuer", "ssn_tin": "12-3456707", "customer_type": "GOVERNMENT", "address": "20 Bond St, Boston, MA 02108", "email": "bonds@muni.gov.example.com", "phone": "617-555-0111"},
+    {"customer_id": "SF-DIT", "first_name": "Trust", "last_name": "IDI", "ssn_tin": "12-3456708", "customer_type": "FIDUCIARY", "address": "9 Fiduciary Ct, Wilmington, DE 19801", "email": "trustee@idibank.example.com", "phone": "302-555-0112"},
+    {"customer_id": "SF-ANC", "first_name": "Life", "last_name": "Insurer", "ssn_tin": "12-3456709", "customer_type": "BUSINESS", "address": "77 Annuity Ave, Hartford, CT 06103", "email": "annuities@lifeinsurer.example.com", "phone": "860-555-0113"},
+    {"customer_id": "SF-BIA", "first_name": "BIA", "last_name": "Custodian", "ssn_tin": "12-3456710", "customer_type": "FIDUCIARY", "address": "1849 C St NW, Washington, DC 20240", "email": "custodian@bia.gov.example.com", "phone": "202-555-0114"},
+    {"customer_id": "SF-DOE", "first_name": "DOE", "last_name": "Program", "ssn_tin": "12-3456711", "customer_type": "BUSINESS", "address": "1000 Independence Ave SW, Washington, DC 20585", "email": "deposits@doe.gov.example.com", "phone": "202-555-0115"},
 ]
 
 # account_number, customer_id, product_type, balance, accrued_interest, orc
+# Balances are set > $2,000,000 so each determination has a meaningful
+# insured/uninsured split (SMDIA = $250,000).
 SAMPLE_ACCOUNTS: list[dict] = [
-    {"account_number": "SF-SGL-A1", "customer_id": "SF-SGL", "product_type": "DDA", "balance": 350000, "accrued_interest": 0, "orc": "SGL"},
-    {"account_number": "SF-JNT-A1", "customer_id": "SF-JNT", "product_type": "SAV", "balance": 500000, "accrued_interest": 0, "orc": "JNT"},
-    {"account_number": "SF-TST-A1", "customer_id": "SF-TST", "product_type": "MMA", "balance": 600000, "accrued_interest": 0, "orc": "TST"},
-    {"account_number": "SF-CRA-A1", "customer_id": "SF-CRA", "product_type": "CDS", "balance": 300000, "accrued_interest": 0, "orc": "CRA"},
-    {"account_number": "SF-EBP-A1", "customer_id": "SF-EBP", "product_type": "DDA", "balance": 500000, "accrued_interest": 0, "orc": "EBP"},
-    {"account_number": "SF-BUS-A1", "customer_id": "SF-BUS", "product_type": "DDA", "balance": 400000, "accrued_interest": 0, "orc": "BUS"},
-    {"account_number": "SF-GOV1-A1", "customer_id": "SF-GOV1", "product_type": "SAV", "balance": 450000, "accrued_interest": 0, "orc": "GOV1"},
-    {"account_number": "SF-GOV2-A1", "customer_id": "SF-GOV2", "product_type": "DDA", "balance": 400000, "accrued_interest": 0, "orc": "GOV2"},
-    {"account_number": "SF-GOV3-A1", "customer_id": "SF-GOV3", "product_type": "DDA", "balance": 300000, "accrued_interest": 0, "orc": "GOV3"},
-    {"account_number": "SF-MSA-A1", "customer_id": "SF-MSA", "product_type": "DDA", "balance": 350000, "accrued_interest": 0, "orc": "MSA"},
-    {"account_number": "SF-PBA-A1", "customer_id": "SF-PBA", "product_type": "DDA", "balance": 350000, "accrued_interest": 0, "orc": "PBA"},
-    {"account_number": "SF-DIT-A1", "customer_id": "SF-DIT", "product_type": "MMA", "balance": 260000, "accrued_interest": 0, "orc": "DIT"},
-    {"account_number": "SF-ANC-A1", "customer_id": "SF-ANC", "product_type": "MMA", "balance": 600000, "accrued_interest": 0, "orc": "ANC"},
-    {"account_number": "SF-BIA-A1", "customer_id": "SF-BIA", "product_type": "SAV", "balance": 150000, "accrued_interest": 0, "orc": "BIA"},
-    {"account_number": "SF-DOE-A1", "customer_id": "SF-DOE", "product_type": "DDA", "balance": 275000, "accrued_interest": 0, "orc": "DOE"},
+    {"account_number": "SF-SGL-A1", "customer_id": "SF-SGL", "product_type": "DDA", "balance": 2300000, "accrued_interest": 0, "orc": "SGL"},
+    {"account_number": "SF-JNT-A1", "customer_id": "SF-JNT", "product_type": "SAV", "balance": 2600000, "accrued_interest": 0, "orc": "JNT"},
+    {"account_number": "SF-TST-A1", "customer_id": "SF-TST", "product_type": "MMA", "balance": 3000000, "accrued_interest": 0, "orc": "TST"},
+    {"account_number": "SF-CRA-A1", "customer_id": "SF-CRA", "product_type": "CDS", "balance": 2250000, "accrued_interest": 0, "orc": "CRA"},
+    {"account_number": "SF-EBP-A1", "customer_id": "SF-EBP", "product_type": "DDA", "balance": 2500000, "accrued_interest": 0, "orc": "EBP"},
+    {"account_number": "SF-BUS-A1", "customer_id": "SF-BUS", "product_type": "DDA", "balance": 2400000, "accrued_interest": 0, "orc": "BUS"},
+    {"account_number": "SF-GOV1-A1", "customer_id": "SF-GOV1", "product_type": "SAV", "balance": 2450000, "accrued_interest": 0, "orc": "GOV1"},
+    {"account_number": "SF-GOV2-A1", "customer_id": "SF-GOV2", "product_type": "DDA", "balance": 2400000, "accrued_interest": 0, "orc": "GOV2"},
+    {"account_number": "SF-GOV3-A1", "customer_id": "SF-GOV3", "product_type": "DDA", "balance": 2300000, "accrued_interest": 0, "orc": "GOV3"},
+    {"account_number": "SF-MSA-A1", "customer_id": "SF-MSA", "product_type": "DDA", "balance": 2600000, "accrued_interest": 0, "orc": "MSA"},
+    {"account_number": "SF-PBA-A1", "customer_id": "SF-PBA", "product_type": "DDA", "balance": 2350000, "accrued_interest": 0, "orc": "PBA"},
+    {"account_number": "SF-DIT-A1", "customer_id": "SF-DIT", "product_type": "MMA", "balance": 2260000, "accrued_interest": 0, "orc": "DIT"},
+    {"account_number": "SF-ANC-A1", "customer_id": "SF-ANC", "product_type": "MMA", "balance": 2600000, "accrued_interest": 0, "orc": "ANC"},
+    {"account_number": "SF-BIA-A1", "customer_id": "SF-BIA", "product_type": "SAV", "balance": 2150000, "accrued_interest": 0, "orc": "BIA"},
+    {"account_number": "SF-DOE-A1", "customer_id": "SF-DOE", "product_type": "DDA", "balance": 2275000, "accrued_interest": 0, "orc": "DOE"},
 ]
 
 # account_number, party_id, role (OWNER|BENEFICIARY|PARTICIPANT), name, interest_pct, vested_interest
+# Rosters cover the ORC-specific parties the UI surfaces: JNT co-owners, TST
+# grantors + beneficiaries, GOV official custodians + public unit, MSA
+# mortgagee + mortgagors, etc. Pass-through vested_interest values sum to the
+# account balance.
 SAMPLE_PARTICIPANTS: list[dict] = [
-    {"account_number": "SF-JNT-A1", "party_id": "P1", "role": "OWNER", "name": "John Smith", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-JNT-A1", "party_id": "P2", "role": "OWNER", "name": "Jane Smith", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-TST-A1", "party_id": "G1", "role": "OWNER", "name": "Mary Grantor", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-TST-A1", "party_id": "B1", "role": "BENEFICIARY", "name": "Child A", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-TST-A1", "party_id": "B2", "role": "BENEFICIARY", "name": "Child B", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-EBP-A1", "party_id": "E1", "role": "PARTICIPANT", "name": "Employee A", "interest_pct": 0, "vested_interest": 300000},
-    {"account_number": "SF-EBP-A1", "party_id": "E2", "role": "PARTICIPANT", "name": "Employee B", "interest_pct": 0, "vested_interest": 200000},
-    {"account_number": "SF-BUS-A1", "party_id": "M1", "role": "OWNER", "name": "Partner Alice", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-BUS-A1", "party_id": "M2", "role": "OWNER", "name": "Partner Bob", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-MSA-A1", "party_id": "R1", "role": "PARTICIPANT", "name": "Mortgagor A", "interest_pct": 0, "vested_interest": 250000},
-    {"account_number": "SF-MSA-A1", "party_id": "R2", "role": "PARTICIPANT", "name": "Mortgagor B", "interest_pct": 0, "vested_interest": 100000},
-    {"account_number": "SF-PBA-A1", "party_id": "H1", "role": "PARTICIPANT", "name": "Bondholder A", "interest_pct": 0, "vested_interest": 250000},
-    {"account_number": "SF-PBA-A1", "party_id": "H2", "role": "PARTICIPANT", "name": "Bondholder B", "interest_pct": 0, "vested_interest": 100000},
-    {"account_number": "SF-DIT-A1", "party_id": "D1", "role": "BENEFICIARY", "name": "Trust Bene", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-ANC-A1", "party_id": "N1", "role": "BENEFICIARY", "name": "Annuitant A", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-ANC-A1", "party_id": "N2", "role": "BENEFICIARY", "name": "Annuitant B", "interest_pct": 0, "vested_interest": 0},
-    {"account_number": "SF-BIA-A1", "party_id": "I1", "role": "BENEFICIARY", "name": "Tribe Member", "interest_pct": 0, "vested_interest": 0},
+    {"account_number": "SF-JNT-A1", "party_id": "P1", "role": "OWNER", "name": "John Smith", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-JNT-A1", "party_id": "P2", "role": "OWNER", "name": "Jane Smith", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-TST-A1", "party_id": "G1", "role": "OWNER", "name": "Mary Grantor", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-TST-A1", "party_id": "B1", "role": "BENEFICIARY", "name": "Child A", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-TST-A1", "party_id": "B2", "role": "BENEFICIARY", "name": "Child B", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-EBP-A1", "party_id": "E1", "role": "PARTICIPANT", "name": "Employee A", "interest_pct": 0, "vested_interest": 1300000},
+    {"account_number": "SF-EBP-A1", "party_id": "E2", "role": "PARTICIPANT", "name": "Employee B", "interest_pct": 0, "vested_interest": 1200000},
+    {"account_number": "SF-BUS-A1", "party_id": "M1", "role": "OWNER", "name": "Partner Alice", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-BUS-A1", "party_id": "M2", "role": "OWNER", "name": "Partner Bob", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-GOV1-A1", "party_id": "C1", "role": "OWNER", "name": "City Treasurer (Official Custodian)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-GOV1-A1", "party_id": "U1", "role": "BENEFICIARY", "name": "City of Denver (Public Unit)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-GOV2-A1", "party_id": "C1", "role": "OWNER", "name": "City Treasurer (Official Custodian)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-GOV2-A1", "party_id": "U1", "role": "BENEFICIARY", "name": "City of Denver (Public Unit)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-GOV3-A1", "party_id": "C1", "role": "OWNER", "name": "State Treasurer (Official Custodian)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-GOV3-A1", "party_id": "U1", "role": "BENEFICIARY", "name": "State of California (Public Unit)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-MSA-A1", "party_id": "S1", "role": "OWNER", "name": "Home Servicer LLC (Mortgagee)", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-MSA-A1", "party_id": "R1", "role": "PARTICIPANT", "name": "Mortgagor A", "interest_pct": 0, "vested_interest": 1400000},
+    {"account_number": "SF-MSA-A1", "party_id": "R2", "role": "PARTICIPANT", "name": "Mortgagor B", "interest_pct": 0, "vested_interest": 1200000},
+    {"account_number": "SF-PBA-A1", "party_id": "H1", "role": "PARTICIPANT", "name": "Bondholder A", "interest_pct": 0, "vested_interest": 1250000},
+    {"account_number": "SF-PBA-A1", "party_id": "H2", "role": "PARTICIPANT", "name": "Bondholder B", "interest_pct": 0, "vested_interest": 1100000},
+    {"account_number": "SF-DIT-A1", "party_id": "D1", "role": "BENEFICIARY", "name": "Trust Beneficiary", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-ANC-A1", "party_id": "N0", "role": "OWNER", "name": "Life Insurer Inc.", "interest_pct": 100, "vested_interest": 0},
+    {"account_number": "SF-ANC-A1", "party_id": "N1", "role": "BENEFICIARY", "name": "Annuitant A", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-ANC-A1", "party_id": "N2", "role": "BENEFICIARY", "name": "Annuitant B", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-BIA-A1", "party_id": "I1", "role": "BENEFICIARY", "name": "Tribe Member A", "interest_pct": 50, "vested_interest": 0},
+    {"account_number": "SF-BIA-A1", "party_id": "I2", "role": "BENEFICIARY", "name": "Tribe Member B", "interest_pct": 50, "vested_interest": 0},
 ]
 
 
@@ -193,7 +208,8 @@ def _local_customer_detail(customer_id: str) -> Optional[dict]:
              for a in SAMPLE_ACCOUNTS if a["customer_id"] == customer_id]
     customer = {"customer_id": cust["customer_id"], "first_name": cust["first_name"],
                 "last_name": cust["last_name"], "ssn_tin": cust["ssn_tin"],
-                "customer_type": cust["customer_type"], "address": "", "email": "", "phone": ""}
+                "customer_type": cust["customer_type"], "address": cust.get("address", ""),
+                "email": cust.get("email", ""), "phone": cust.get("phone", "")}
     return {"customer": customer, "accounts": accts}
 
 

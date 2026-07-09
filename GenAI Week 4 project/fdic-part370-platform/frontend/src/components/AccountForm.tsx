@@ -66,6 +66,17 @@ export default function AccountForm({ account, onChange, index, onRemove }: Prop
     onChange({ ...account, [kind]: items } as Account);
   };
 
+  // Controlled value for a party field, so values loaded from Snowflake
+  // (grantors, official custodians, public unit, beneficiaries, mortgagors…)
+  // are shown in the input rather than being write-only.
+  const listToCsv = (kind: "owners" | "beneficiaries" | "participants"): string => {
+    const items = (account[kind] ?? []) as Array<{ name: string; vested_interest?: number }>;
+    if (kind === "participants") {
+      return items.map((p) => (p.vested_interest ? `${p.name}:${p.vested_interest}` : p.name)).join(", ");
+    }
+    return items.map((p) => p.name).join(", ");
+  };
+
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
@@ -107,6 +118,7 @@ export default function AccountForm({ account, onChange, index, onRemove }: Prop
           return (
             <Grid item xs={12} md={6} key={role}>
               <TextField fullWidth label={label} helperText={helper}
+                value={listToCsv(role)}
                 onChange={(e) => csvToList(e.target.value, role)} />
             </Grid>
           );

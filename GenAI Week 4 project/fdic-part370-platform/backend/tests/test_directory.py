@@ -32,7 +32,12 @@ def test_search_customers_by_ssn_tin():
 def test_search_accounts_matches_orc():
     accts = directory.search_accounts("TST")
     assert accts and accts[0]["account_number"] == "SF-TST-A1"
-    assert accts[0]["balance"] == 600000.0
+    assert accts[0]["balance"] > 2_000_000  # seeded > $2M for a real insured/uninsured split
+
+
+def test_customer_detail_includes_demographics():
+    cust = directory.get_customer_detail("SF-SGL")["customer"]
+    assert cust["address"] and cust["email"] and cust["phone"]
 
 
 def test_customer_detail_shapes_parties():

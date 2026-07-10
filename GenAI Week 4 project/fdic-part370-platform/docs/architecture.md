@@ -178,6 +178,8 @@ with the 7 named evaluators and lives only in the LangSmith UI.
 Every external service is **optional** — the platform runs fully locally and each
 integration degrades cleanly when its key is absent. Status is reported live by
 `GET /api/v1/health/integrations?live=true` and `scripts/check_integrations.py`.
+In the current deployment (verified 2026-07-09) LangSmith, Snowflake, Pinecone and
+Fireworks all report `✓ reachable`; Azure AD runs in local-bypass mode.
 
 | Integration | Role | Fallback when unconfigured |
 |---|---|---|

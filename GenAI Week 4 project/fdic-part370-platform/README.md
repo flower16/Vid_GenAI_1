@@ -132,6 +132,13 @@ the health layer: [docs/integrations.md](docs/integrations.md).
 in the repo) — each degrades cleanly, so nothing is required to run or demo the
 platform. `python scripts/check_integrations.py --live` reports which are wired.
 
+> **Verified in this deployment (2026-07-09):** with keys in `backend/.env`,
+> LangSmith, Snowflake, Pinecone and Fireworks all check `✓ reachable`, and a real
+> determination's evals were confirmed landing in Snowflake `LANGSMITH_EVAL_RESULTS`
+> and synced to the LangSmith `fdic-part370` project. The Fireworks judges make live
+> model calls (`FIREWORKS_JUDGE_MODEL=glm-5p2`; the old `llama-v3p1-8b-instruct`
+> default was retired and 404s). Azure AD is left in local-bypass mode.
+
 | Integration | Role | Fallback when unconfigured |
 |---|---|---|
 | Snowflake | persistence + audit + input lookups | local `audit_log.jsonl` + sample rows |

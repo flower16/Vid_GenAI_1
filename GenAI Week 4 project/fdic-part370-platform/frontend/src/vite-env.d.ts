@@ -11,3 +11,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Injected by vite.config.ts `define` at build time (git sha + build timestamp).
+declare const __BUILD_SHA__: string;
+declare const __BUILD_TIME__: string;

@@ -84,6 +84,9 @@ export default function Login() {
           Demo mode maps to the backend's local Admin principal; RBAC roles are enforced
           on the API in production.
         </Typography>
+        <Typography variant="caption" color="text.secondary" display="block" mt={1} textAlign="center" sx={{ opacity: 0.7 }}>
+          build {__BUILD_SHA__} · {new Date(__BUILD_TIME__).toLocaleString()}
+        </Typography>
       </Paper>
     </Box>
   );

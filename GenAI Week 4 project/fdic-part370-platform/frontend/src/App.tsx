@@ -106,6 +106,11 @@ export default function App() {
             FDIC Part 370 — Insurance Determination Platform
           </Typography>
           <Typography variant="caption" sx={{ mr: 2 }}>Agentic AI · LangGraph</Typography>
+          <Tooltip title={`Build ${__BUILD_SHA__} · ${__BUILD_TIME__}`}>
+            <Typography variant="caption" sx={{ mr: 2, opacity: 0.8 }}>
+              build {__BUILD_SHA__}
+            </Typography>
+          </Tooltip>
           <SystemStatus />
           <Tooltip title={`${user.mode === "sso" ? "Azure AD" : "Demo"} · roles: ${user.roles.join(", ")}`}>
             <Chip

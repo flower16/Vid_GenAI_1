@@ -265,8 +265,11 @@ python scripts/sync_evals_to_langsmith.py --all       # re-sync everything
 The deterministic evals prove the *math* reconciles; three **Fireworks judges**
 score the qualitative parts the math can't — `rationale_grounding`,
 `evidence_support`, `plain_language` ([evals/fireworks_evals.py](backend/app/evals/fireworks_evals.py)).
-- Model: `accounts/fireworks/models/llama-v3p1-8b-instruct` over the OpenAI-compatible
-  `/chat/completions` API (stdlib `urllib`, no extra dependency).
+- Model: `FIREWORKS_JUDGE_MODEL` (default `accounts/fireworks/models/glm-5p2`) over
+  the OpenAI-compatible `/chat/completions` API (stdlib `urllib`, no extra dependency).
+  It must be a model **available on your account** — the serverless catalog changes,
+  so list yours at `GET {base_url}/models`; a retired id 404s and the judges log a
+  warning and fall back to the heuristic.
 - **Free by default:** with no `FIREWORKS_API_KEY` each judge falls back to a
   deterministic heuristic (`grader="heuristic"`), so the suite runs at **$0**. Set
   the key to switch the same judges to the model (`grader="fireworks"`).

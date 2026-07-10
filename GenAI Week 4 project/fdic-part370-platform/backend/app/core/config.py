@@ -31,7 +31,10 @@ class Settings(BaseSettings):
     fireworks_api_key: Optional[str] = None
     # OpenAI-compatible chat endpoint; served OSS model keeps the judge cheap.
     fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"
-    fireworks_judge_model: str = "accounts/fireworks/models/llama-v3p1-8b-instruct"
+    # Must be a model currently available on your Fireworks account — the serverless
+    # catalog changes (the old llama-v3p1-8b-instruct was retired and now 404s).
+    # List what you can call: GET {base_url}/models. Override via FIREWORKS_JUDGE_MODEL.
+    fireworks_judge_model: str = "accounts/fireworks/models/glm-5p2"
     # Run the Fireworks judges inside every determination (so their scores persist
     # to Snowflake and sync to LangSmith alongside the deterministic evals). Safe
     # by default: with no fireworks_api_key the judges use the free heuristic.

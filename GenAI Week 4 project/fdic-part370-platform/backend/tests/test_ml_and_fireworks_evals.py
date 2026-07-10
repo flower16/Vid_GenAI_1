@@ -5,12 +5,26 @@ fall back to their deterministic heuristic when no FIREWORKS_API_KEY is set (as
 in CI). No network, no cost.
 """
 
+import pytest
+
 from app.evals.fireworks_evals import (
     evaluate_determination, judge_rationale_grounding, judge_evidence_support,
     judge_plain_language,
 )
 from app.ml.orc_policy import CLASSES, accuracy, featurize, train, ORCPolicy
 from scripts.train_orc_policy import build_training_data
+
+
+@pytest.fixture
+def force_heuristic(monkeypatch):
+    """Pin the judges to the deterministic heuristic path.
+
+    These are unit tests of the heuristic scoring itself, so they must not depend
+    on whether a developer's .env happens to carry a live FIREWORKS_API_KEY (which
+    would hit the real model and make results non-deterministic). CI has no key and
+    already takes this path; this makes local runs match CI.
+    """
+    monkeypatch.setattr("app.evals.fireworks_evals.fireworks_available", lambda: False)
 
 
 # --------------------------------------------------------------------------- #
@@ -60,16 +74,16 @@ _BAD = {"orc": "TST", "insured_amount": "0", "coverage_limit": "0",
         "aggregated_pi": "0", "rationale": "", "evidence": {}}
 
 
-def test_judges_score_grounded_result_high_and_empty_low():
+def test_judges_score_grounded_result_high_and_empty_low(force_heuristic):
     for judge in (judge_rationale_grounding, judge_evidence_support, judge_plain_language):
         good = judge(_GOOD)
         bad = judge(_BAD)
-        assert good["grader"] == "heuristic"  # no API key in CI
+        assert good["grader"] == "heuristic"  # pinned by the fixture
         assert 0.0 <= good["score"] <= 1.0 and 0.0 <= bad["score"] <= 1.0
         assert good["score"] > bad["score"], f"{judge.__name__} did not separate good/bad"
 
 
-def test_evaluate_determination_aggregates():
+def test_evaluate_determination_aggregates(force_heuristic):
     report = evaluate_determination([_GOOD])
     assert set(report["by_judge"]) == {"rationale_grounding", "evidence_support", "plain_language"}
     assert report["passed"] is True

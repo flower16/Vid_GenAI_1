@@ -42,11 +42,19 @@ Live probes: LangSmith `list_datasets`, Fireworks `GET /models`, Snowflake
 Example (`--live`):
 ```
 langsmith   ✓ reachable      project=fdic-part370, tracing=on; API reachable
-fireworks   · not configured judge_model=…/llama-v3p1-8b-instruct
+fireworks   ✓ reachable      judge_model=…/glm-5p2; HTTP 200
 snowflake   ✓ reachable      db=FDIC_PART370.CORE; SELECT 1 ok
 azure_ad    · not configured tenant=common
 pinecone    ✓ reachable      index=fdic-part370; index_present=True
 ```
+
+> **Fireworks caveat.** The live check pings `/models`, which only proves the key
+> and host are valid — **not** that `FIREWORKS_JUDGE_MODEL` itself is deployed. A
+> retired/misspelled model id still shows `✓ reachable` here but 404s on the actual
+> `/chat/completions` call, and the judges then log a warning and fall back to the
+> free heuristic. Confirm the judge model resolves with a real call:
+> `python scripts/run_fireworks_evals.py --json` and check `grader` is `fireworks`
+> (not `heuristic`).
 
 ## Deploy on Replit
 

@@ -21,12 +21,15 @@ model. See [docs/evals.md](../../../docs/evals.md).
 from __future__ import annotations
 
 import json
+import logging
 import re
 import urllib.error
 import urllib.request
 from typing import Callable
 
 from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Fireworks chat call (OpenAI-compatible), stdlib only
@@ -82,6 +85,11 @@ def _judge(system: str, user: str, heuristic: Callable[[], dict]) -> dict:
                 "reason": str(data.get("reason", ""))[:400],
                 "grader": "fireworks"}
     except (urllib.error.URLError, KeyError, ValueError, TimeoutError) as e:  # pragma: no cover
+        # Configured but the call failed (bad/retired model id, quota, network).
+        # We still fall back so a determination never breaks — but log it, so a
+        # misconfigured key/model can't silently masquerade as heuristic scores.
+        logger.warning("Fireworks judge call failed (model=%s); falling back to "
+                       "heuristic: %s", settings.fireworks_judge_model, e)
         h = heuristic()
         return {**h, "grader": "heuristic", "reason": f"fireworks unavailable ({e}); {h['reason']}"}
 

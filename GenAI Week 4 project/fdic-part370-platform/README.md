@@ -122,8 +122,32 @@ python scripts/check_integrations.py --live   # LangSmith / Fireworks / Snowflak
 ```
 
 **One-click Replit hosting** runs the whole stack as a single web process
-(`start.sh` builds the UI and FastAPI serves it same-origin). Setup + the health
-layer: [docs/integrations.md](docs/integrations.md).
+(`start.sh` builds the UI and FastAPI serves it same-origin; `.replit` sets
+`deploymentTarget=cloudrun`, `replit.nix` pins python-3.12 + nodejs-20). Setup +
+the health layer: [docs/integrations.md](docs/integrations.md).
+
+### Integration status & fine-tuning (what's real vs. optional)
+
+**All five integrations are optional and ship unconfigured** (no `backend/.env`
+in the repo) — each degrades cleanly, so nothing is required to run or demo the
+platform. `python scripts/check_integrations.py --live` reports which are wired.
+
+| Integration | Role | Fallback when unconfigured |
+|---|---|---|
+| Snowflake | persistence + audit + input lookups | local `audit_log.jsonl` + sample rows |
+| LangSmith | tracing + offline experiment + eval sync | in-process `evaluate_local` |
+| Fireworks | LLM-as-judge evals; fine-tune target | free deterministic heuristic |
+| Pinecone | RAG over the rule corpus | in-code rules (`domain/orc/rules.py`) |
+| Azure AD | SSO + RBAC | synthetic Admin in `local` |
+| Replit | one-process hosting (`start.sh`) | run backend + frontend locally |
+
+**Fine-tuning:** no paid fine-tune was executed. The learnable task is **ORC
+classification**, addressed two ways over one synthetic labeled set: (1) the
+**shipped, $0 RL policy** ([ml/orc_policy.py](backend/app/ml/orc_policy.py)) — a
+15-class softmax trained by expected policy-gradient (100% train/hold-out); and
+(2) an **enabled-but-not-run** Fireworks fine-tune — `export_finetune_dataset.py`
+writes a fine-tune-ready JSONL, but launching the job (`firectl`) is the paid step
+and is left out. See [docs/fine-tuning-and-rl.md](docs/fine-tuning-and-rl.md).
 
 ## Folder structure
 

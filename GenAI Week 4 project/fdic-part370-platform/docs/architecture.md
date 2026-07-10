@@ -24,6 +24,8 @@ flowchart TB
     LG[LangGraph Workflow - 9 Agents]
     LC[LangChain RAG]
     LS[(LangSmith Tracing/Evals)]
+    FW[Fireworks LLM-as-judge]
+    RL[RL ORC policy - on-device]
   end
 
   subgraph Data["Data & Knowledge"]
@@ -42,6 +44,9 @@ flowchart TB
   API --> LG
   LG --> LC --> PC
   LG --> LS
+  LG --> RL
+  LG --> FW
+  FW --> LS
   API --> SF
   MCP --> LG
   API -. OTel .-> LS
@@ -145,7 +150,8 @@ flowchart TB
 flowchart LR
   G[LangGraph agents emit trace + evidence] --> AUD[(CALCULATION_AUDIT)]
   G --> RES[(INSURANCE_RESULT)]
-  EV[Evals Agent] --> EVT[(LANGSMITH_EVAL_RESULTS)]
+  EV[Evals Agent: 7 deterministic checks] --> EVT[(LANGSMITH_EVAL_RESULTS)]
+  FW[Fireworks judges: fw_rationale/evidence/plain] --> EVT
   EVT -->|sync_evals_to_langsmith.py| LS[(LangSmith runs + feedback)]
   LS -->|LANGSMITH_RUN_ID| EVT
   AUD --> REP[FDIC Summary Report Tables 1-3]
@@ -158,10 +164,56 @@ Every determination produces: (a) a reproducible evidence chain per ORC,
 output files plus the 3-table Summary Report — all persisted and queryable.
 
 **Eval flow.** The in-workflow Evals Agent writes one row per check to
-`LANGSMITH_EVAL_RESULTS` on every determination. `sync_evals_to_langsmith.py`
-then pushes those rows to LangSmith as **runs + feedback** (PASS=1 / WARNING=0.5 /
-FAIL=0) and writes the `LANGSMITH_RUN_ID` back, linking each Snowflake eval row to
-its LangSmith run. The separate **offline experiment**
-(`seed_langsmith_dataset.py --run`) scores the labeled per-ORC dataset with the 6
-named evaluators and lives only in the LangSmith UI.
+`LANGSMITH_EVAL_RESULTS` on every determination — the 7 deterministic self-checks
+**plus** the three Fireworks LLM-as-judge scores (`fw_rationale_grounding`,
+`fw_evidence_support`, `fw_plain_language`) when `FIREWORKS_EVALS_IN_WORKFLOW=true`.
+`sync_evals_to_langsmith.py` then pushes those rows to LangSmith as **runs +
+feedback** (PASS=1 / WARNING=0.5 / FAIL=0) and writes the `LANGSMITH_RUN_ID` back,
+linking each Snowflake eval row to its LangSmith run. The separate **offline
+experiment** (`seed_langsmith_dataset.py --run`) scores the labeled per-ORC dataset
+with the 7 named evaluators and lives only in the LangSmith UI.
+
+## 7. External Integrations & Deployment
+
+Every external service is **optional** — the platform runs fully locally and each
+integration degrades cleanly when its key is absent. Status is reported live by
+`GET /api/v1/health/integrations?live=true` and `scripts/check_integrations.py`.
+
+| Integration | Role | Fallback when unconfigured |
+|---|---|---|
+| **Snowflake** | Persistence (results + audit) + input lookups (`db/persistence.py`, `db/directory.py`) | Local `audit_log.jsonl` + in-code sample rows |
+| **LangSmith** | Tracing + offline experiment + eval sync bridge | In-process `evaluate_local` |
+| **Fireworks** | LLM-as-judge evals; fine-tune dataset target | Free deterministic heuristic judges |
+| **Pinecone** | RAG over the Part 370 rule corpus | In-code rule corpus (`domain/orc/rules.py`) |
+| **Azure AD** | SSO + RBAC | Synthetic Admin principal in `local` |
+
+**Deployment.** `start.sh` runs the whole stack as a **single web process**
+(builds the Vite frontend, then FastAPI serves both the API and the built UI
+same-origin). This is what the **Replit** config (`.replit`, `replit.nix`,
+`deploymentTarget=cloudrun`) invokes; the same script backs Docker/AKS. Secrets
+arrive as env vars (Replit Secrets pane / Key Vault) and are read by
+`core/config.py`.
+
+## 8. Learning Layer — RL policy & fine-tune path
+
+The coverage **math** is deterministic (`domain/orc/engine.py`) and never learned.
+The one learnable task is **ORC classification** (customer + account → ORC code),
+addressed two ways over the *same* synthetic labeled set:
+
+```mermaid
+flowchart LR
+  DATA[Synthetic labeled ORC examples] --> RL[RL policy - app/ml/orc_policy.py]
+  DATA --> EXP[export_finetune_dataset.py]
+  RL -->|expected policy-gradient, pure Python| ART1[15-class softmax in-process check]
+  EXP -->|chat JSONL| ART2[data/orc_finetune.jsonl]
+  ART2 -.->|firectl job - paid| FT[Hosted fine-tuned 8B model]
 ```
+
+- **Shipped & trained (free):** the RL policy — linear softmax over 15 ORC classes,
+  trained by the expected (all-action) policy gradient; converges to 100%
+  train/hold-out in <1s, no numpy/GPU/network. Runs in-process as a cross-check.
+- **Enabled but not executed (paid):** the Fireworks fine-tune. The export script
+  writes a fine-tune-ready dataset; launching the training job (`firectl`) is the
+  paid step and is **not** run here — no fine-tuned model is created or checked in.
+
+See [fine-tuning-and-rl.md](fine-tuning-and-rl.md).

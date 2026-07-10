@@ -10,7 +10,7 @@ a section.
 - [4. The determination workflow (9 agents)](#4-the-determination-workflow-9-agents)
 - [5. ORC coverage logic](#5-orc-coverage-logic)
 - [6. BUS — full eligibility branching (§330.11)](#6-bus--full-eligibility-branching-33011)
-- [7. Integrations: Pinecone, LangSmith, Snowflake](#7-integrations-pinecone-langsmith-snowflake)
+- [7. Integrations: Pinecone, LangSmith, Snowflake, Fireworks + Replit deploy](#7-integrations-pinecone-langsmith-snowflake-fireworks--replit-deploy)
 - [8. Data model](#8-data-model)
 - [9. API surface](#9-api-surface)
 - [10. Testing & evals](#10-testing--evals)
@@ -33,8 +33,11 @@ it:
 6. Persists the full audit trail.
 
 It runs fully **locally** without any external service (RAG falls back to
-in-code rules; persistence falls back to a local JSONL log). External
-integrations (Pinecone, LangSmith, Snowflake) light up when their keys are set.
+in-code rules; persistence falls back to a local JSONL log; the LLM-as-judge
+evals fall back to a free heuristic). External integrations (Pinecone, LangSmith,
+Snowflake, Fireworks, Azure AD) light up when their keys are set, and Replit
+hosts the whole stack as one web process. Check status any time with
+`python scripts/check_integrations.py --live`.
 
 ---
 
@@ -179,11 +182,29 @@ and the frontend `AccountForm.tsx` (the two BUS controls, shown only for ORC=BUS
 
 ---
 
-## 7. Integrations: Pinecone, LangSmith, Snowflake
+## 7. Integrations: Pinecone, LangSmith, Snowflake, Fireworks + Replit deploy
 
 All keys live in `backend/.env`. They are **auto-exported to the OS environment**
 at startup (`core/config.py` → `_export_to_env`) so libraries that read env vars
 directly (langchain-pinecone, OpenAI, LangSmith) work without manual setup.
+
+> **Every integration is optional and currently unconfigured** (no `backend/.env`
+> in the repo). Each degrades cleanly, so the platform is fully usable with zero
+> keys. See exactly what's wired and reachable any time:
+> ```bash
+> cd backend
+> python scripts/check_integrations.py --live   # Snowflake / LangSmith / Fireworks / Azure AD / Pinecone
+> ```
+> The same data is served at `GET /api/v1/health/integrations?live=true` and shown
+> as the AppBar **"Integrations N/5"** chip.
+>
+> | Integration | Role | Fallback when unconfigured |
+> |---|---|---|
+> | Pinecone | RAG over rule corpus | in-code rules (`domain/orc/rules.py`) |
+> | LangSmith | tracing + experiment + eval sync | in-process `evaluate_local` |
+> | Snowflake | persistence + audit + input lookups | `audit_log.jsonl` + sample rows |
+> | Fireworks | LLM-as-judge evals; fine-tune target | free deterministic heuristic |
+> | Azure AD | SSO + RBAC | synthetic Admin in `local` |
 
 ### Pinecone (RAG over the rule corpus)
 - Index `fdic-part370` (dim 3072, cosine). Seeded with 15 ORC rule docs.
@@ -239,6 +260,47 @@ python scripts/sync_evals_to_langsmith.py --all       # re-sync everything
 
 > The engine reads inputs from the **API request**, not from Snowflake. Snowflake
 > stores **outputs**. The seeded input tables are for inspection / manual SQL.
+
+### Fireworks (LLM-as-judge evals)
+The deterministic evals prove the *math* reconciles; three **Fireworks judges**
+score the qualitative parts the math can't — `rationale_grounding`,
+`evidence_support`, `plain_language` ([evals/fireworks_evals.py](backend/app/evals/fireworks_evals.py)).
+- Model: `accounts/fireworks/models/llama-v3p1-8b-instruct` over the OpenAI-compatible
+  `/chat/completions` API (stdlib `urllib`, no extra dependency).
+- **Free by default:** with no `FIREWORKS_API_KEY` each judge falls back to a
+  deterministic heuristic (`grader="heuristic"`), so the suite runs at **$0**. Set
+  the key to switch the same judges to the model (`grader="fireworks"`).
+- Run standalone: `python scripts/run_fireworks_evals.py` (add `--json`).
+- With `FIREWORKS_EVALS_IN_WORKFLOW=true` (default) the judges also run on every
+  determination as `fw_*` scores → persisted to `LANGSMITH_EVAL_RESULTS` and synced
+  to LangSmith alongside the deterministic checks.
+- **There is no "app" in the Fireworks console** — it's a model API. Confirm calls
+  landed via the Fireworks **Usage/Billing** dashboard; the only artifact you can
+  create there is an optional fine-tuned model (below).
+
+### Replit (one-process hosting)
+`start.sh` runs the whole stack as a **single web process**: it installs backend
+deps, builds the Vite frontend, and starts FastAPI, which serves both the API and
+the built UI same-origin. That's exactly what `.replit` invokes
+(`run = "bash start.sh"`, `deploymentTarget = "cloudrun"`, `replit.nix` pins
+python-3.12 + nodejs-20). Secrets go in the Replit **Secrets** pane and arrive as
+env vars read by `core/config.py`. The same `start.sh` also backs Docker/AKS.
+
+### Learning: RL policy (shipped, free) vs. fine-tune (enabled, not run)
+The coverage math is deterministic and never learned. The one learnable task —
+**ORC classification** (customer + account → ORC code) — is addressed two ways over
+the *same* synthetic labeled set ([docs/fine-tuning-and-rl.md](docs/fine-tuning-and-rl.md)):
+
+- **RL policy — the learning that was actually done ($0).**
+  [app/ml/orc_policy.py](backend/app/ml/orc_policy.py) is a 15-class linear softmax
+  trained by the **expected (all-action) policy gradient**, pure Python, converging
+  to 100% train/hold-out in <1s. Train it: `python scripts/train_orc_policy.py`
+  (add `--save models/orc_policy.json`). No artifact is checked in; it trains
+  in-process.
+- **Fine-tune — enabled but not executed (paid).** No hosted fine-tune was run.
+  `python scripts/export_finetune_dataset.py` only writes a Fireworks/OpenAI-ready
+  chat JSONL (`data/orc_finetune.jsonl`); launching the job is the paid `firectl`
+  step and is intentionally left out, so no fine-tuned model exists in the repo.
 
 ---
 
